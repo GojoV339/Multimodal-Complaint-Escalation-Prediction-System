@@ -31,7 +31,7 @@ This architecture is widely used in modern Data Lakehouse / MLOps systems.
 
 ---
 ## 📂 Project Structure
-
+```
 project-root/
 ├── api/
 │   └── application.py
@@ -119,7 +119,7 @@ project-root/
 ├── requirements.txt
 ├── README.md
 └── main.py
-
+```
 ---
 
 ## 🧪 Testing Strategy
