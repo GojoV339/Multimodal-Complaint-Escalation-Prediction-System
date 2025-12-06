@@ -30,104 +30,95 @@ Future:
 This architecture is widely used in modern Data Lakehouse / MLOps systems.
 
 ---
-
 ## 📂 Project Structure
 
 project-root/
-├── api
-│ └── application.py
-├── config
-│ ├── config.yaml
-│ └── params.yaml
-├── data
-│ ├── bronze/
-│ ├── silver/
-│ └── gold/
-├── docs
-│ ├── feature_01.md
-│ └── feature_02.md
-├── evaluation
-│ ├── evaluate_model_01.py
-│ └── evaluate_model_02.py
-├── examples
-│ └── basic_inference_example.py
-├── LICENSE
-├── main.py
-├── notebooks
-│ └── trials.ipynb
-├── project_cli
-│ ├── evaluate.py
-│ └── train.py
-├── pyproject.toml
-├── README.md
+├── api/
+│   └── application.py
+├── config/
+│   ├── config.yaml
+│   └── params.yaml
+├── data/
+│   ├── bronze/            # Raw data (source dump)
+│   ├── silver/            # Cleaned + validated data
+│   └── gold/              # Feature-ready datasets for ML
+├── docs/
+│   ├── feature_01.md
+│   └── feature_02.md
+├── evaluation/
+│   ├── evaluate_model_01.py
+│   └── evaluate_model_02.py
+├── examples/
+│   └── basic_inference_example.py
+├── notebooks/
+│   └── trials.ipynb
+├── project_cli/
+│   ├── train.py
+│   └── evaluate.py
+├── src/
+│   └── complaint_priority/
+│       ├── __init__.py
+│       ├── api/
+│       │   ├── app.py
+│       │   ├── routes.py
+│       │   └── schemas.py
+│       ├── cli/
+│       │   ├── train_cli.py
+│       │   └── predict_cli.py
+│       ├── config/
+│       │   ├── config_reader.py
+│       │   └── constants.py
+│       ├── data/
+│       │   ├── download_dataset.py
+│       │   ├── data_ingestion.py
+│       │   ├── data_transformation.py
+│       │   └── data_validation.py
+│       ├── entity/
+│       │   ├── data_entities.py
+│       │   └── model_entities.py
+│       ├── features/
+│       │   ├── build_features.py
+│       │   └── feature_selector.py
+│       ├── infra/
+│       │   ├── gcp/
+│       │   └── sqs/
+│       ├── models/
+│       │   ├── train_model.py
+│       │   ├── evaluate_model.py
+│       │   ├── predict_model.py
+│       │   └── registry.py
+│       ├── network/
+│       │   ├── approach_01.py
+│       │   └── approach_02.py
+│       ├── pipeline/
+│       │   ├── train_pipeline.py
+│       │   └── predict_pipeline.py
+│       ├── utils/
+│       │   ├── logging.py
+│       │   ├── common.py
+│       │   └── io_utils.py
+│       └── visualization/
+│           ├── visualize_data.py
+│           └── visualize_model.py
+├── tasks/
+│   ├── download_data.sh
+│   ├── lint.sh
+│   └── run_training.sh
+├── tests/
+│   ├── test_api.py
+│   ├── test_data.py
+│   ├── test_features.py
+│   └── test_models.py
+├── training/
+│   ├── experiments/
+│   │   └── experiment_template.yaml
+│   ├── prepare_experiment.py
+│   ├── run_experiment.py
+│   └── update_metadata.py
+├── Dockerfile
 ├── requirements.txt
-├── src
-│ ├── complaint_priority
-│ │ ├── init.py
-│ │ ├── api
-│ │ │ ├── app.py
-│ │ │ ├── routes.py
-│ │ │ └── schemas.py
-│ │ ├── cli
-│ │ │ ├── predict_cli.py
-│ │ │ └── train_cli.py
-│ │ ├── config
-│ │ │ ├── config_reader.py
-│ │ │ └── constants.py
-│ │ ├── data
-│ │ │ ├── download_dataset.py
-│ │ │ ├── data_ingestion.py
-│ │ │ ├── data_transformation.py
-│ │ │ └── data_validation.py
-│ │ ├── entity
-│ │ │ ├── data_entities.py
-│ │ │ └── model_entities.py
-│ │ ├── features
-│ │ │ ├── build_features.py
-│ │ │ └── feature_selector.py
-│ │ ├── infra
-│ │ │ ├── gcp/
-│ │ │ └── sqs/
-│ │ ├── models
-│ │ │ ├── train_model.py
-│ │ │ ├── evaluate_model.py
-│ │ │ ├── predict_model.py
-│ │ │ └── registry.py
-│ │ ├── network
-│ │ │ ├── approach_01.py
-│ │ │ └── approach_02.py
-│ │ ├── pipeline
-│ │ │ ├── train_pipeline.py
-│ │ │ └── predict_pipeline.py
-│ │ ├── utils
-│ │ │ ├── common.py
-│ │ │ ├── io_utils.py
-│ │ │ └── logging.py
-│ │ └── visualization
-│ │ ├── visualize_data.py
-│ │ └── visualize_model.py
-│ └── project.py
-├── tasks
-│ ├── download_data.sh
-│ ├── lint.sh
-│ ├── run_training.sh
-│ └── test_api.sh
-├── templates
-│ └── index.html
-├── tests
-│ ├── init.py
-│ ├── test_api.py
-│ ├── test_data.py
-│ ├── test_features.py
-│ └── test_models.py
-├── training
-│ ├── experiments
-│ │ └── experiment_template.yaml
-│ ├── prepare_experiment.py
-│ ├── run_experiment.py
-│ └── update_metadata.py
-└── uv.lock
-
+├── README.md
+└── main.py
 
 ---
 
