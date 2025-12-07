@@ -3,3 +3,6 @@ pandas
 matplotlib
 scikit-learn
 tqdm
+pyyaml
+requests
+loguru # for professional logging 

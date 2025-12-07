@@ -1,1 +1,6 @@
-# model/experiment hyperparameters
+data_source:
+  download_url : "https://files.consumerfinance.gov/ccdb/complaints.csv.zip"
+
+data_paths:
+  raw_data_dir : "data/bronze"
+  raw_data_filename: "complaints_raw.csv.zip"
