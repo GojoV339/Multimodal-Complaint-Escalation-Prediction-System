@@ -6,3 +6,4 @@ tqdm
 pyyaml
 requests
 loguru # for professional logging 
+pydantic # enforces data types for data validation
