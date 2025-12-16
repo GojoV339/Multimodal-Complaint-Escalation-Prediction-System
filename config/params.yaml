@@ -4,3 +4,7 @@ data_source:
 data_paths:
   raw_data_dir : "data/bronze"
   raw_data_filename: "complaints_raw.csv.zip"
+
+  silver_data_dir : "data/silver"
+  silver_data_filename : "complaints_validated.parquet"
+
