@@ -1,84 +1,62 @@
+# src/complaint_priority/data/data_ingestion.py
+
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+from tqdm import tqdm
+import pyarrow as pa
+import pyarrow.parquet as pq
 import os
-import io
+import sys
 
+# Import common utilities and Pydantic schemas
 from complaint_priority.utils.common import read_yaml, create_directories
-from complaint_priority.entity.data_entities import RawDataSchema, ValidationDataSchema
-
+from complaint_priority.entity.data_entities import RawDataSchema, ValidatedDataSchema
 
 CONFIG_PATH = Path("config/params.yaml")
 
-def load_data(file_path : Path) -> pd.DataFrame:
+def validate_chunk(df_chunk: pd.DataFrame, column_map: dict) -> pd.DataFrame:
     """
-    Loada data from the specified path , handling .zip compression
-    
-    Args: 
-        file_path : The path to the data file (expected to be .csv.zip).
-        
-    Returns:
-        A pandas Data Frame
-    """
-    logger.info(f"Loading data fromm {file_path}...")
-    try:
-        df = pd.read_csv(file_path, low_memory=False) 
-        """
-        low_memory = False 
-        by default it is True , process the file in smaller chunks to conserve memeory,
-        we are loading the entire dataset into memory , to check the data types
-        """
-        logger.info(f"Data loaded successfully. Initial shape : {df.shape}")
-        return df
-    except FileNotFoundError:
-        logger.error(f"File not found at : {file_path}")
-    except Exception as e:
-        logger.error(f"Error loading data from : {file_path} : {e}")
-        raise
-    
+    Validates a single chunk of data against the RawDataSchema, performs essential 
+    cleaning (narrative drop), and returns a cleaned DataFrame suitable for the Silver layer.
 
-def validate_and_clean_data(df:pd.DataFrame) -> pd.DataFrame:
-    """
-    Validates the Dataframe against the RawDataSchema, performs basic cleaning,
-    and returns a DataFrame ready for the Silver layer.
-    
+    This function is central to the memory-efficient processing pipeline.
+
     Args:
-        df : The raw DataFrame loaded from the Bronze layer.
-    
+        df_chunk: The raw DataFrame chunk loaded from the Bronze layer.
+        column_map: A dictionary mapping original column names to the clean 
+                    Pydantic field names for internal consistency.
+
     Returns:
-        A cleaned and validated DataFrame.
+        A cleaned and validated DataFrame chunk.
     """
-    logger.info("Starting data validation and cleaning process...")
     
-    """
-    Steps : 
-        1. Rename columns to match Pydantic field aliases for easier validation
-        2. Drop records where the core narrative is missing (Critical loss)
-        3. Validation using Pydantic (Row-by-Row validation)
-    """
-    column_mapping = {field.alias or name : name for name, field in RawDataSchema.__fields__.items()}
-    df.rename(columns={alias : name for alias,name in column_mapping.items()}, inplace=True)
+    # 1. Drop records where the core narrative is missing (Pre-Pydantic cleanup)
+    # This is a critical data quality filter as the narrative is the multimodal input.
+    initial_count = len(df_chunk)
+    df_chunk.dropna(subset=['Consumer complaint narrative'], inplace=True)
     
-    initial_count = len(df)
-    df.dropna(subset=['Consumer_complaint_narrative'], inplace=True)
-    dropped_count = initial_count - len(df)
-    logger.warning(
-        f"Dropped {dropped_count} rows ({dropped_count/initial_count:.2%}) due to missing 'Consumer_complaint_narrative'."
-    )
+    if len(df_chunk) < initial_count:
+        logger.warning(
+            f"Dropped {initial_count - len(df_chunk)} rows due to missing 'Consumer complaint narrative' in chunk."
+        )
+
+    # 2. Rename columns to match Pydantic field names
+    # This aligns the DataFrame column headers with the internal model structure.
+    df_chunk.rename(columns=column_map, inplace=True)
     
+    # 3. Validation using Pydantic (Row-by-Row validation)
     validated_records = []
     invalid_count = 0
     
-    """
-    We iterate over the DataFrame rows to apply the Pydantic schema validation 
-    
-    Slow process but very precise for structured validatoin.
-    """
-    for index,row in df.iterrows():
+    for _, row in df_chunk.iterrows():
         try:
+            # Pydantic validation: ensures types, checks for required fields, 
+            # and runs custom validators (e.g., Timely_response check).
             validated_data = RawDataSchema(**row.to_dict())
-            record = validated_data.dict()
             
+            # Map the validated data to the clean Silver schema (ValidatedDataSchema) names
+            record = validated_data.dict()
             clean_record = {
                 'complaint_id': record['Complaint_ID'],
                 'date_received': record['Date_received'],
@@ -96,45 +74,106 @@ def validate_and_clean_data(df:pd.DataFrame) -> pd.DataFrame:
             validated_records.append(clean_record)
             
         except Exception as e:
-            # log the error and drop the row
+            # Increment the counter for invalid records and optionally log the error detail.
             invalid_count += 1
-            # logger.debug(f"Row {index} failed validatoin : {e}")  # Debugging
+            # logger.debug(f"Row failed validation: {e}") 
             
     final_df = pd.DataFrame(validated_records)
     
-    logger.info(f"Total invalid rows dropped during Pydantic validation: {invalid_count}")
-    logger.success(f"Validation complete. Final cleaned data shape: {final_df.shape}")
+    if invalid_count > 0:
+        logger.warning(f"Dropped {invalid_count} rows due to Pydantic validation errors in chunk.")
     
-    ValidationDataSchema.parse_obj(final_df.iloc[0].to_dict())
     return final_df
 
 def run_data_ingestion():
     """
-    Takes the data from bronze layer and cleans it and stores it in silver layer
+    Main function to run the data ingestion pipeline (Bronze -> Silver).
+
+    This pipeline reads the large raw dataset in memory-efficient chunks, 
+    validates each chunk against the defined Pydantic schema, and incrementally 
+    saves the cleaned data to the Silver layer as a single Parquet file using 
+    the robust PyArrow.ParquetWriter.
+    
+    Raises:
+        Exception: If any step of the pipeline fails.
     """
-    logger.info("Starting Bronze to Silver data ingestion pipeline.")
+    logger.info("Starting Bronze to Silver data ingestion pipeline with chunking.")
+    
+    # Initialize writer outside try block so it can be accessed in finally block
+    writer = None 
+    total_rows_written = 0
+    
     try:
+        # 1. Read configuration
         config = read_yaml(CONFIG_PATH)
-        raw_dir = config['data_paths']['raw_data_dir']
-        raw_filename = config['data_paths']['raw_data_filename']
-        raw_data_path = Path(raw_dir)/raw_filename
+        paths = config['data_paths']
+        data_schema = config['data_schema']
         
-        silver_dir = config['data_paths']['raw_data_dir'].replace('bronze','silver')
-        silver_filename = 'complaints_validated.parquet'
-        silver_data_path = Path(silver_dir) / silver_filename
+        raw_data_path = Path(paths['raw_data_dir']) / paths['raw_data_filename']
+        silver_dir = paths['silver_data_dir']
+        silver_data_path = Path(silver_dir) / paths['silver_data_filename']
         
-        df_raw = load_data(raw_data_path)
-        df_silver = validate_and_clean_data(df_raw)
+        # Extract dtypes and column names for the Pandas Reader for memory optimization
+        dtype_map = data_schema['usecols_and_dtypes']
+        columns_to_load = list(dtype_map.keys())
+        chunk_size = config['data_source']['chunk_size']
+
+        # Determine column mapping for Pydantic validation (Original name -> Pythonic name)
+        pydantic_column_map = {field.alias or name: name for name, field in RawDataSchema.__fields__.items()}
+        
+        # 2. Initialize output settings
         create_directories([silver_dir])
-        df_silver.to_parquet(silver_data_path, index = False)
-        logger.success(f"Validated data saved successfully to Silver layer : {silver_data_path}")
+        
+        # 3. Use pandas.read_csv with chunksize to iterate over the massive file
+        logger.info(f"Reading data in chunks of {chunk_size} rows...")
+        
+        reader = pd.read_csv(
+            raw_data_path, 
+            compression='zip', 
+            usecols=columns_to_load, 
+            dtype=dtype_map,
+            chunksize=chunk_size,
+            iterator=True 
+        )
+        
+        # Iterate through the chunks returned by the reader
+        for i, df_chunk in enumerate(reader):
+            logger.info(f"Processing chunk {i+1}...")
+            
+            # 4. Validate and clean the chunk
+            df_validated = validate_chunk(df_chunk, pydantic_column_map)
+            
+            # 5. Save the validated chunk using PyArrow.ParquetWriter
+            
+            # Convert Pandas DataFrame to PyArrow Table
+            table = pa.Table.from_pandas(df_validated, preserve_index=False)
+            
+            if i == 0:
+                # First chunk: Initialize the Parquet Writer and set the schema
+                writer = pq.ParquetWriter(silver_data_path, table.schema)
+                logger.info(f"Initialized PyArrow Parquet Writer at {silver_data_path}")
+            
+            # Write the current chunk (table)
+            writer.write_table(table)
+            
+            total_rows_written += len(df_validated)
+            logger.info(f"Chunk {i+1} processed. Valid rows written: {len(df_validated)}. Total rows: {total_rows_written}")
+
+        logger.success(f"Ingestion complete. Total validated rows saved to Silver layer: {total_rows_written}")
+        
     except Exception as e:
         logger.error(f"Data Ingestion Pipeline Failed: {e}")
+        # Cleanup: If the pipeline fails, remove the partial Parquet file to avoid corrupted data.
+        if 'total_rows_written' in locals() and total_rows_written == 0 and Path(silver_data_path).exists():
+            os.remove(silver_data_path)
+            logger.warning(f"Cleaned up failed partial file: {silver_data_path}")
         raise e
     
-if __name__ == "__main__":
+    finally:
+        # 6. CRITICAL: Close the Parquet Writer to finalize the file structure
+        if writer:
+            writer.close()
+            logger.info("Closed ParquetWriter connection, file is finalized.")
+
+if __name__ == '__main__':
     run_data_ingestion()
-    
-    
-    
-            
