@@ -28,6 +28,23 @@ Future:
 | 🟡 Gold | `data/gold/` | Feature-optimized datasets used for ML training |
 
 This architecture is widely used in modern Data Lakehouse / MLOps systems.
+---
+
+## 📚 Project Documentation
+
+Detailed documentation for each major component of the system is maintained
+in the `docs/` directory.
+
+These documents cover:
+- Design decisions and architecture choices
+- Data quality issues and how they were handled
+- Label engineering logic and business assumptions
+- Feature engineering strategy and trade-offs
+- Challenges faced during development and their solutions
+
+> 📌 Note: The documentation is being actively updated as the project evolves.
+> Additional details and design notes will be added incrementally.
+
 
 ---
 ## 📂 Project Structure
@@ -139,8 +156,8 @@ We aim for **>80% coverage** once complete.
 |-------|----------|
 | ✔ Stage 1 | Project Setup + Structure |
 | ✔ Stage 2 | Data ingestion → Bronze → Silver |
-| 🔄  Stage 3 | Labeling → Gold |
-| ⏳ Stage 4 | Feature engineering (text + tabular fusion) |
+| ✔  Stage 3 | Labeling → Gold |
+| 🔄 Stage 4 | Feature engineering (text + tabular fusion) |
 | ⏳ Stage 5 | Model training + evaluation pipeline |
 | ⏳ Stage 6 | API + CLI Inference |
 | ⏳ Stage 7 | Validation, Deployment Prep |
