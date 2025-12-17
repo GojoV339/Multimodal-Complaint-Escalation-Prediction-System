@@ -138,8 +138,8 @@ We aim for **>80% coverage** once complete.
 | Stage | Component |
 |-------|----------|
 | ✔ Stage 1 | Project Setup + Structure |
-| 🔄 Stage 2 | Data ingestion → Bronze → Silver |
-| ⏳ Stage 3 | Labeling → Gold |
+| ✔ Stage 2 | Data ingestion → Bronze → Silver |
+| 🔄  Stage 3 | Labeling → Gold |
 | ⏳ Stage 4 | Feature engineering (text + tabular fusion) |
 | ⏳ Stage 5 | Model training + evaluation pipeline |
 | ⏳ Stage 6 | API + CLI Inference |

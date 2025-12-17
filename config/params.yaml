@@ -1,6 +1,7 @@
 data_source:
   download_url : "https://files.consumerfinance.gov/ccdb/complaints.csv.zip"
-  chunk_size : 500000
+  chunk_size : 100000
+  target_rows : 200000
 
 data_paths:
   raw_data_dir : "data/bronze"
@@ -11,14 +12,13 @@ data_paths:
 
 # --- DATA SCHEMA AND TYPES (CRITICAL FOR MEMORY OPTIMIZATION) ---
 data_schema:
-  # Columns to load from the raw file and their required types for memory optimization.
-  # Using 'category' for categorical text saves massive amounts of memory.
+
   usecols_and_dtypes:
-    # Core Text/Date
-    "Date received": "str" # Keep as string for reading, will convert to datetime later
-    "Consumer complaint narrative": "str" # Must be str (will be converted to object later)
+
+    "Date received": "str"
+    "Consumer complaint narrative": "str" 
     
-    # Categorical Features (use 'category' for memory savings)
+    # Categorical Features (using 'category' for memory savings)
     "Product": "category"
     "Sub-product": "category"
     "Issue": "category"
@@ -28,6 +28,5 @@ data_schema:
     "Company": "category"
     "State": "category"
     "Submitted via": "category"
-    
-    # Identifier (use smallest possible integer type)
+
     "Complaint ID": "int32"
