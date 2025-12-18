@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "category-encoders>=2.9.0",
+    "joblib>=1.5.2",
     "loguru>=0.7.3",
     "matplotlib>=3.10.7",
     "numpy>=2.3.5",
@@ -14,5 +16,6 @@ dependencies = [
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
     "scikit-learn>=1.7.2",
+    "sentence-transformers>=5.2.0",
     "tqdm>=4.67.1",
 ]

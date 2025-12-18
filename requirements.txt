@@ -8,3 +8,7 @@ requests
 loguru # for professional logging 
 pydantic # enforces data types for data validation
 pyarrow # for saving data to parquet
+joblib 
+sentence-transformers
+category_encoders
+scikit-learn
